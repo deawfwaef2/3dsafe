@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3D 唯美亚洲人像沙箱 · 渲染管线 · 发型编辑器 · 眉睫美妆 · 电影级后处理滤镜</title>
+  <style>
+    * { box-sizing: border-box; user-select: none; }
+    html, body { margin: 0; height: 100%; background: #141312; color: #ece7e1; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; overflow: hidden; }
+    #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #ui { position: fixed; top: 14px; right: 14px; width: 345px; max-height: calc(100vh - 28px); overflow-y: auto;
+          background: rgba(20, 19, 18, 0.86); backdrop-filter: blur(14px);
+          border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px;
+          box-shadow: 0 18px 48px rgba(0,0,0,0.45); z-index: 10; }
+    body.hidepanel #ui { display: none; }
+    h1 { font-size: 14px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.3px; }
+    .sub { font-size: 11px; color: #9c948c; margin-bottom: 10px; }
+    .sec { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 9px; margin-top: 9px; }
+    .sec-title { font-size: 11px; color: #e2c5a6; margin-bottom: 6px; font-weight: 600; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 5px 0; }
+    .row label { color: #d6cfc7; flex: 0 0 96px; font-size: 12px; }
+    select, button.btn { flex: 1; background: rgba(255,255,255,0.07); color: #f3eee8; border: 1px solid rgba(255,255,255,0.14);
+             border-radius: 7px; padding: 5px 8px; font-size: 12px; cursor: pointer; }
+    button.toggle { width: 100%; padding: 8px 10px; font-weight: 600; font-size: 12.5px;
+                    background: linear-gradient(180deg, #e7d4be, #c9ad8e); color: #1c1713; border: none; border-radius: 8px; cursor: pointer; }
+    input[type=range] { flex: 1; accent-color: #d8ba98; }
+    .val { width: 36px; text-align: right; color: #a89f96; font-variant-numeric: tabular-nums; font-size: 11px; }
+    #panelToggle { position: fixed; top: 14px; left: 14px; z-index: 11; background: rgba(20,19,18,0.72);
+                   color: #ece7e1; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #141312; color: #cfc7bd; font-size: 14px; z-index: 20; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="loading">正在加载 3D 亚洲人像与发型沙箱…</div>
+  <button id="panelToggle">☰ 调色与造型面板</button>
+  <aside id="ui">
+    <h1>3D 唯美亚洲人像与造型沙箱</h1>
+    <div class="sub">多渲染管线 · 发型编辑器 · 眉睫美妆 · 27+ 电影后处理滤镜</div>
+    <button id="btnMode" class="toggle on">✨ 唯美渲染管线：开启（点击对比原始效果）</button>
+
+    <div class="sec">
+      <div class="sec-title">1. 渲染管线 · 画风预设 · 电影胶片 LUT</div>
+      <div class="row"><label>后处理管线</label>
+        <select id="selPostPipeline">
+          <option value="beauty">全栈电影光学后处理链 (beautyPostChain · 27+ 特效)</option>
+          <option value="gtao">轻量 GTAO + CAS 管线 (postChain)</option>
+        </select>
+      </div>
+      <div class="row"><label>皮肤渲染方式</label>
+        <select id="selSkinPipeline">
+          <option value="preintegrated">Penner 屏幕空间曲率预积分 SSS (skinMaterial)</option>
+          <option value="dermis3d">3D 真皮微米毛孔 + 双瓣 SSS (photorealLighting)</option>
+        </select>
+      </div>
+      <div class="row"><label>唯美画风预设</label><select id="selVisualStyle"></select></div>
+      <div class="row"><label>电影胶片 LUT</label><select id="selFilmLut"></select></div>
+      <div class="row"><label>光影氛围</label><select id="selLight"></select></div>
+      <div class="row"><label>镜头视角</label><select id="selView"></select></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">2. 发型切换与真发丝材质</div>
+      <div class="row"><label>预设发型</label><select id="selHair"></select></div>
+      <div class="row"><label>发丝渲染方式</label><select id="selHairMode"></select></div>
+      <div class="row"><label>真发丝密度</label><select id="selDensity"></select></div>
+      <div class="row"><label>染发色号</label><select id="selHairColor"></select></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">3. 发型编辑器（刘海 / 分缝 / 蓬松 / 鬓角 / 卷度）</div>
+      <div class="row"><label>刘海长短</label><input id="sBangsLen" type="range" min="-0.5" max="0.5" step="0.02" value="0.0"><span class="val" id="sBangsLenO">0.00</span></div>
+      <div class="row"><label>八字分缝</label><input id="sBangsPart" type="range" min="0" max="1.0" step="0.02" value="0.0"><span class="val" id="sBangsPartO">0.00</span></div>
+      <div class="row"><label>高颅顶蓬松</label><input id="sCrownVol" type="range" min="-0.3" max="0.6" step="0.02" value="0.0"><span class="val" id="sCrownVolO">0.00</span></div>
+      <div class="row"><label>两侧鬓角</label><input id="sSideburns" type="range" min="-0.4" max="0.6" step="0.02" value="0.0"><span class="val" id="sSideburnsO">0.00</span></div>
+      <div class="row"><label>发尾卷度</label><input id="sCurl" type="range" min="0" max="1.0" step="0.02" value="0.0"><span class="val" id="sCurlO">0.00</span></div>
+      <div class="row"><label>微风拂动</label><input id="sWind" type="range" min="-0.5" max="0.5" step="0.02" value="0.0"><span class="val" id="sWindO">0.00</span></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">4. 亚洲肤质 · 眉睫美妆 · 光学后处理微调</div>
+      <div class="row"><label>眉形选择</label><select id="selBrow"></select></div>
+      <div class="row"><label>亚洲肤色</label><select id="selSkin"></select></div>
+      <div class="row"><label>红润通透感</label><input id="sScatter" type="range" min="0" max="1.6" step="0.02" value="1.0"><span class="val" id="sScatterO">1.00</span></div>
+      <div class="row"><label>水光细腻度</label><input id="sRough" type="range" min="0.28" max="0.8" step="0.01" value="0.56"><span class="val" id="sRoughO">0.56</span></div>
+      <div class="row"><label>毛孔肌理</label><input id="sPore" type="range" min="0" max="1.6" step="0.02" value="0.80"><span class="val" id="sPoreO">0.80</span></div>
+      <div class="row"><label>发丝天使环</label><input id="sHairShine" type="range" min="0.2" max="2.5" step="0.05" value="1.0"><span class="val" id="sHairShineO">1.00</span></div>
+      <div class="row"><label>逆光发丝金边</label><input id="sHairBack" type="range" min="0" max="2.5" step="0.05" value="1.0"><span class="val" id="sHairBackO">1.00</span></div>
+      <div class="row"><label>黑柔镜柔焦</label><input id="sSoftFocus" type="range" min="0" max="1.0" step="0.02" value="0.22"><span class="val" id="sSoftFocusO">0.22</span></div>
+      <div class="row"><label>85mm 景深</label><input id="sDepthBlur" type="range" min="0" max="1.0" step="0.02" value="0.18"><span class="val" id="sDepthBlurO">0.18</span></div>
+      <div class="row"><label>树影散景光斑</label><input id="sDappled" type="range" min="0" max="1.0" step="0.02" value="0.0"><span class="val" id="sDappledO">0.00</span></div>
+      <div class="row"><label>丁达尔体积光</label><input id="sTyndall" type="range" min="0" max="1.0" step="0.02" value="0.0"><span class="val" id="sTyndallO">0.00</span></div>
+      <div class="row"><label>胶片红晕 Halation</label><input id="sHalation" type="range" min="0" max="1.0" step="0.02" value="0.18"><span class="val" id="sHalationO">0.18</span></div>
+      <div class="row"><label>清晰锐化</label><input id="sSharp" type="range" min="0" max="0.8" step="0.02" value="0.35"><span class="val" id="sSharpO">0.35</span></div>
+      <div class="row"><label>胶片颗粒</label><input id="sGrain" type="range" min="0" max="0.08" step="0.002" value="0.028"><span class="val" id="sGrainO">0.03</span></div>
+      <div class="row"><label>光影曝光</label><input id="sExpo" type="range" min="0.6" max="1.4" step="0.02" value="0.88"><span class="val" id="sExpoO">0.88</span></div>
+    </div>
+
+    <div class="sec">
+      <div class="row">
+        <button class="btn" id="btnShot">📷 导出写真 PNG</button>
+      </div>
+    </div>
+  </aside>
+  <script type="module" src="/src/demo.js"></script>
+</body>
+</html>
